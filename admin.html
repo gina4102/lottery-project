@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin 控制頁面</title>
+  <style>
+    body { font-family: 微軟正黑體; text-align:center; padding:50px; }
+    input, button { padding:10px 20px; font-size:16px; margin:5px; }
+    ul { list-style:none; padding:0; text-align:left; max-width:400px; margin:20px auto; }
+  </style>
+</head>
+<body>
+  <h1>Admin 控制頁面</h1>
+  <p>可抽籤 & 控制下一幕。</p>
+
+  <input type="number" id="stageCountInput" placeholder="上台人數" min="1">
+  <button id="drawBtn">抽籤</button>
+  <button id="nextSceneBtn">下一幕</button>
+
+  <ul id="participantsList"><li>候選人列表：</li></ul>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <script>
+    // 初始化 Firebase
+    var firebaseConfig = {
+      apiKey: "AIzaSyBBnbx00_d0Py6px-b_uZVrgpSapHNLiBo",
+      authDomain: "lottery-test-b0021.firebaseapp.com",
+      databaseURL: "https://lottery-test-b0021-default-rtdb.firebaseio.com",
+      projectId: "lottery-test-b0021",
+      storageBucket: "lottery-test-b0021.firebasestorage.app",
+      messagingSenderId: "226750767626",
+      appId: "1:226750767626:web:95bcb340e42cb0703575f3"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    const participantsList = document.getElementById('participantsList');
+
+    // 顯示候選人列表
+    function updateParticipantList() {
+      firebase.database().ref('participants').once('value', snapshot => {
+        const allUsers = snapshot.val() || {};
+        participantsList.innerHTML = "<li>候選人列表：</li>";
+        Object.keys(allUsers).forEach(id => {
+          const li = document.createElement('li');
+          li.textContent = id + " → " + (allUsers[id].status || "未準備");
+          participantsList.appendChild(li);
+        });
+      });
+    }
+    updateParticipantList();
+    setInterval(updateParticipantList, 2000);
+
+    // 抽籤功能
+    document.getElementById('drawBtn').addEventListener('click', () => {
+      const stageCount = parseInt(document.getElementById('stageCountInput').value) || 2;
+
+      firebase.database().ref('participants').once('value', snapshot => {
+        const allUsers = snapshot.val() || {};
+        const readyUsers = Object.keys(allUsers).filter(id => allUsers[id].status === 'ready');
+
+        if (readyUsers.length === 0) { alert("沒有人準備抽籤！"); return; }
+
+        // 隨機排序
+        readyUsers.sort(() => Math.random() - 0.5);
+
+        const onStage = readyUsers.slice(0, stageCount);
+        const audience = readyUsers.slice(stageCount);
+
+        // 更新 status
+        onStage.forEach(id => firebase.database().ref('participants/' + id).update({ status: 'onStage' }));
+        audience.forEach(id => firebase.database().ref('participants/' + id).update({ status: 'audience' }));
+
+        alert("抽籤完成！");
+        updateParticipantList();
+      });
+    });
+
+    // 下一幕功能
+    document.getElementById('nextSceneBtn').addEventListener('click', () => {
+      firebase.database().ref().update({ currentPage: 'nextScene' });
+      alert("已更新所有觀眾到下一幕！");
+    });
+  </script>
+</body>
+</html>
