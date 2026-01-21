@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>觀眾入口</title>
+  <style>
+    body { font-family: 微軟正黑體; text-align:center; padding:50px; }
+    h1 { color: #2a52be; }
+    p { font-size: 1.2em; }
+
+    input {
+      padding: 8px;
+      font-size: 1em;
+      margin: 5px;
+      width: 200px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor:pointer;
+      margin-top: 10px;
+    }
+
+    #waitingScreen { display:none; }
+  </style>
+</head>
+<body>
+
+  <!-- 入口畫面 -->
+  <div id="joinScreen">
+    <h1>歡迎參加體驗</h1>
+    <p>請留下你的資料，加入候選人名單。</p>
+
+    <div>
+      <input id="nameInput" placeholder="姓名" />
+    </div>
+    <div>
+      <input id="ageInput" type="number" placeholder="年齡" />
+    </div>
+
+    <button id="joinBtn">參加抽籤</button>
+
+    <p id="errorText" style="color:red;"></p>
+  </div>
+
+  <!-- 等待畫面 -->
+  <div id="waitingScreen">
+    <h1>等待區</h1>
+    <p>你已成功加入候選人名單，請稍候 Admin 抽籤...</p>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <script>
+    // 初始化 Firebase
+    var firebaseConfig = {
+      apiKey: "AIzaSyBBnbx00_d0Py6px-b_uZVrgpSapHNLiBo",
+      authDomain: "lottery-test-b0021.firebaseapp.com",
+      databaseURL: "https://lottery-test-b0021-default-rtdb.firebaseio.com",
+      projectId: "lottery-test-b0021",
+      storageBucket: "lottery-test-b0021.firebasestorage.app",
+      messagingSenderId: "226750767626",
+      appId: "1:226750767626:web:95bcb340e42cb0703575f3"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    // 裝置識別（沿用你原本的）
+    var userId = localStorage.getItem('userId');
+    if (!userId) {
+      userId = 'user-' + Math.floor(Math.random() * 1000000);
+      localStorage.setItem('userId', userId);
+    }
+
+    // DOM
+    const nameInput = document.getElementById('nameInput');
+    const ageInput = document.getElementById('ageInput');
+    const joinBtn = document.getElementById('joinBtn');
+    const errorText = document.getElementById('errorText');
+
+    // 參加抽籤
+    joinBtn.addEventListener('click', () => {
+      const name = nameInput.value.trim();
+      const age = ageInput.value.trim();
+
+      if (!name || !age) {
+        errorText.innerText = '請填寫姓名與年齡';
+        return;
+      }
+
+      firebase.database().ref('participants/' + userId).set({
+        name: name,
+        age: Number(age),
+        status: 'ready',
+        joined: true,
+        used: false,
+        timestamp: Date.now()
+      }).then(() => {
+        document.getElementById('joinScreen').style.display = 'none';
+        document.getElementById('waitingScreen').style.display = 'block';
+      });
+    });
+
+    // 監聽自己的狀態（演出流程用）
+    firebase.database().ref('participants/' + userId + '/status').on('value', snapshot => {
+      const status = snapshot.val();
+      if (status === 'onStage') window.location.href = 'stage.html';
+      else if (status === 'audience') window.location.href = 'audience.html';
+    });
+
+    // 統一跳頁控制
+    firebase.database().ref('currentPage').on('value', snapshot => {
+      const page = snapshot.val();
+      if (!page) return;
+      window.location.href = page + '.html';
+    });
+  </script>
+
+</body>
+</html>
